@@ -67,6 +67,7 @@ namespace WebApplication1
                         d.*,
                         c.CName as CompanyName,
                         c.Flag as CompanyFlag,
+            r.RName as ReasonName,
                         dept.DName as DepartmentName,
                         usedDept.DName as UsedByDepartmentName,
                         u.FullName as RequestedByName,
@@ -77,6 +78,7 @@ namespace WebApplication1
                         md.FullName as MDName
                     FROM Document d
                     INNER JOIN Company c ON d.CompanyId = c.CompanyId
+inner join Reason r on d.ReasonId = r.ReasonId
                     INNER JOIN Department dept ON d.DepartmentId = dept.DepartmentId
                     INNER JOIN Department usedDept ON d.UsedByToWhom = usedDept.DepartmentId
                     INNER JOIN Users u ON d.UsersId = u.UsersId
@@ -101,6 +103,7 @@ namespace WebApplication1
                                 SavedTime = Convert.ToDateTime(reader["SavedTime"]),
                                 CompanyName = reader["CompanyName"].ToString(),
                                 CompanyFlag = reader["CompanyFlag"].ToString(),
+                                Reason = reader["ReasonName"].ToString(),
                                 DepartmentName = reader["DepartmentName"].ToString(),
                                 UsedByDepartmentName = reader["UsedByDepartmentName"].ToString(),
                                 RequestedByName = reader["RequestedByName"].ToString(),
@@ -344,25 +347,29 @@ namespace WebApplication1
         private void CreateRequisitionDetails(Document document, DocumentModel doc, Font headerFont, Font normalFont)
         {
             // Create the first table - 2x2 grid (Date, Requested By, Invoice Company, Allocation Department)
-            var topTable = new PdfPTable(2) { WidthPercentage = 100 };
-            topTable.SetWidths(new float[] { 50f, 50f }); // Equal width columns
+            var topTable = new PdfPTable(4) { WidthPercentage = 100 };
+            topTable.SetWidths(new float[] { 25f, 25f,25f,25f }); // Equal width columns
 
             // Row 1: Date and Requested By
             AddCell(topTable, "Date", normalFont, true);
+            AddCell(topTable, doc.SavedTime.ToString("dd/MM/yyyy"), normalFont, true);
             AddCell(topTable, "Requested By", normalFont, true);
+            AddCell(topTable, doc.RequestedByName, normalFont, true);
 
             // Row 2: Invoice Company and Allocation Department  
             AddCell(topTable, "Invoice Company", normalFont, true);
+            AddCell(topTable, doc.CompanyName, normalFont, true);
             AddCell(topTable, "Allocation Department", normalFont, true);
+            AddCell(topTable, doc.DepartmentName, normalFont, true);
 
             document.Add(topTable);
 
             // Create the second table - Reason and Division Head row
-            var middleTable = new PdfPTable(3) { WidthPercentage = 100 };
-            middleTable.SetWidths(new float[] { 40f, 30f, 30f }); // Reason takes more space
+            var middleTable = new PdfPTable(4) { WidthPercentage = 100 };
+            middleTable.SetWidths(new float[] { 25f, 25f, 25f,25f }); 
 
             AddCell(middleTable, "Reason", normalFont, true);
-            AddCell(middleTable, "Reason", normalFont, true);
+            AddCell(middleTable, doc.Reason, normalFont, true);
             AddCell(middleTable, "Division Head", normalFont, true);
             AddCell(middleTable, doc.DepartmentHeadName, normalFont, false);
 
@@ -374,88 +381,75 @@ namespace WebApplication1
             // Title row spanning full width
             var titleCell = new PdfPCell(new Phrase("Requisition Details", headerFont));
             titleCell.HorizontalAlignment = Element.ALIGN_CENTER;
-            titleCell.Padding = 5f;
+            //titleCell.Padding = 5f;
             detailsTable.AddCell(titleCell);
 
             document.Add(detailsTable);
 
-            // Create the requirement details table - 2 columns
-            var requirementTable = new PdfPTable(2) { WidthPercentage = 100 };
-            requirementTable.SetWidths(new float[] { 50f, 50f });
+            // Requirement Items and Suppliers
+            var itemsText = string.Join(", ", doc.RequestedItems.ConvertAll(x => x.Description));
+            var suppliersText = string.Join(", ", doc.RequestedItems.ConvertAll(x => x.SupplierName).Distinct());
 
-            // Left side: Requirement (Item) with Purchase Order Supplier underneath
-            var leftCell = new PdfPCell();
-            leftCell.AddElement(new Paragraph("Requirement (Item)", normalFont));
-            leftCell.AddElement(new Paragraph("Purchase Order", normalFont));
-            leftCell.AddElement(new Paragraph("Supplier", normalFont));
+            var bottomTable = new PdfPTable(4) { WidthPercentage = 100 };
+            bottomTable.SetWidths(new float[] { 20f,40f,20f,20f});
+            AddCell(bottomTable, "Requirement", normalFont, true);
+            AddCell(bottomTable, itemsText, normalFont, true);
+            AddCell(bottomTable, "Used by/To whom", normalFont, true);
+            AddCell(bottomTable, doc.UsedByDepartmentName, normalFont, true);
 
-            // Right side: Used by / To whom with Budgeted options
-            var rightCell = new PdfPCell();
-            rightCell.AddElement(new Paragraph("Used by / To whom", normalFont));
+            AddCell(bottomTable, "Supplier", normalFont, true);
+            AddCell(bottomTable, suppliersText, normalFont, false);
+            AddCell(bottomTable, "Budgeted", normalFont, true);
+            AddCell(bottomTable, doc.Budgeted ? "Yes" : "No", normalFont, false);
 
-            // Create budgeted options table within the right cell
-            var budgetedTable = new PdfPTable(3);
-            budgetedTable.SetWidths(new float[] { 33f, 33f, 34f });
-            budgetedTable.WidthPercentage = 100;
-
-            AddCell(budgetedTable, "Budgeted", normalFont, true);
-            AddCell(budgetedTable, "Yes", normalFont, true);
-            AddCell(budgetedTable, "NO", normalFont, true);
-
-            // Add another row for N/A
-            var naCell = new PdfPCell(new Phrase("N/A", normalFont));
-            naCell.Colspan = 3;
-            naCell.HorizontalAlignment = Element.ALIGN_CENTER;
-            budgetedTable.AddCell(naCell);
-
-            rightCell.AddElement(budgetedTable);
-
-            requirementTable.AddCell(leftCell);
-            requirementTable.AddCell(rightCell);
-
-            document.Add(requirementTable);
-
+            document.Add(bottomTable);
+           
             // Add minimal spacing
-            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));
+            //document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));
         }
 
 
         private void CreateExistingItemDetails(Document document, DocumentModel doc, Font headerFont, Font normalFont)
         {
-            document.Add(new Paragraph("Existing Item Details (If the item is not a new/ new project)", headerFont));
+            // Create the main requisition details table
+            var detailsTable = new PdfPTable(1) { WidthPercentage = 100 };
+            // Title row spanning full width
+            var titleCell = new PdfPCell(new Phrase("Existing Item Details (If the item is not a new/ new project)", headerFont));
+            titleCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            //titleCell.Padding = 5f;
+            detailsTable.AddCell(titleCell);
+            document.Add(detailsTable);
 
-            var table = new PdfPTable(6) { WidthPercentage = 100 };
+            //// Only add rows if values are not null
+            //if (doc.EIDDateOfPurchase.HasValue || !string.IsNullOrEmpty(doc.EIDWarranty) ||
+            //    !string.IsNullOrEmpty(doc.EIDMake) || !string.IsNullOrEmpty(doc.EIDModel) ||
+            //    !string.IsNullOrEmpty(doc.EIDSerialNo))
+            //{
+            //    AddCell(table, "Date of Purchase", normalFont, true);
+            //    AddCell(table, doc.EIDDateOfPurchase?.ToString("dd/MM/yyyy") ?? "", normalFont, false);
+            //    AddCell(table, "Warranty", normalFont, true);
+            //    AddCell(table, doc.EIDWarranty ?? "", normalFont, false);
+            //    AddCell(table, "", normalFont, false);
+            //    AddCell(table, "", normalFont, false);
 
-            // Only add rows if values are not null
-            if (doc.EIDDateOfPurchase.HasValue || !string.IsNullOrEmpty(doc.EIDWarranty) ||
-                !string.IsNullOrEmpty(doc.EIDMake) || !string.IsNullOrEmpty(doc.EIDModel) ||
-                !string.IsNullOrEmpty(doc.EIDSerialNo))
-            {
-                AddCell(table, "Date of Purchase", normalFont, true);
-                AddCell(table, doc.EIDDateOfPurchase?.ToString("dd/MM/yyyy") ?? "", normalFont, false);
-                AddCell(table, "Warranty", normalFont, true);
-                AddCell(table, doc.EIDWarranty ?? "", normalFont, false);
-                AddCell(table, "", normalFont, false);
-                AddCell(table, "", normalFont, false);
+            //    AddCell(table, "Make", normalFont, true);
+            //    AddCell(table, doc.EIDMake ?? "", normalFont, false);
+            //    AddCell(table, "Model", normalFont, true);
+            //    AddCell(table, doc.EIDModel ?? "", normalFont, false);
+            //    AddCell(table, "", normalFont, false);
+            //    AddCell(table, "", normalFont, false);
 
-                AddCell(table, "Make", normalFont, true);
-                AddCell(table, doc.EIDMake ?? "", normalFont, false);
-                AddCell(table, "Model", normalFont, true);
-                AddCell(table, doc.EIDModel ?? "", normalFont, false);
-                AddCell(table, "", normalFont, false);
-                AddCell(table, "", normalFont, false);
+            //    AddCell(table, "Serial Number", normalFont, true);
+            //    AddCell(table, doc.EIDSerialNo ?? "", normalFont, false);
+            //    AddCell(table, "", normalFont, false);
+            //    AddCell(table, "", normalFont, false);
+            //    AddCell(table, "", normalFont, false);
+            //    AddCell(table, "", normalFont, false);
 
-                AddCell(table, "Serial Number", normalFont, true);
-                AddCell(table, doc.EIDSerialNo ?? "", normalFont, false);
-                AddCell(table, "", normalFont, false);
-                AddCell(table, "", normalFont, false);
-                AddCell(table, "", normalFont, false);
-                AddCell(table, "", normalFont, false);
+            //    document.Add(table);
+            //}
 
-                document.Add(table);
-            }
-
-            document.Add(new Paragraph(" ", normalFont));
+            //document.Add(new Paragraph(" ", normalFont));
         }
 
         private void CreateCostSummaryTable(Document document, DocumentModel doc, Font headerFont, Font normalFont)
@@ -614,6 +608,7 @@ namespace WebApplication1
         public string MDName { get; set; }
         public List<RequestedItemModel> RequestedItems { get; set; } = new List<RequestedItemModel>();
         public string Currency { get; set; } = "LKR";
+        public String Reason { get; set; }
     }
 
     public class RequestedItemModel
