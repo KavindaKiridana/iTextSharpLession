@@ -16,7 +16,7 @@ namespace WebApplication1
 
         protected void Button1_Click(object sender, EventArgs e)
         {
-            int newDocumentId = 2; // Simulating a new document ID for demonstration purposes
+            int newDocumentId = 27; // Simulating a new document ID for demonstration purposes
             GeneratePDF generatePDF = new GeneratePDF();
             generatePDF.GetPDF(newDocumentId);
         }
