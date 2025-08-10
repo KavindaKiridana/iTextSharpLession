@@ -15,6 +15,7 @@ using iTextFont = iTextSharp.text.Font;
 using iTextRectangle = iTextSharp.text.Rectangle;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
+using System.Web.DynamicData;
 
 namespace WebApplication1
 {
@@ -113,7 +114,8 @@ inner join Reason r on d.ReasonId = r.ReasonId
                                 ITDivisionComment = reader["ITDivisionComment"].ToString(),
                                 ITDivisionRecommendation = reader["ITDivisionRecommendation"] == DBNull.Value ? null : reader["ITDivisionRecommendation"].ToString(),
                                 Remarks = reader["Remarks"] == DBNull.Value ? null : reader["Remarks"].ToString(),
-                                EIDDateOfPurchase = reader["EIDDateOfPurchase"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(reader["EIDDateOfPurchase"]),
+                                // EIDDateOfPurchase = reader["EIDDateOfPurchase"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(reader["EIDDateOfPurchase"]),
+                                EIDDateOfPurchase = reader["EIDDateOfPurchase"] == DBNull.Value ? "N/A" : Convert.ToDateTime(reader["EIDDateOfPurchase"]).ToString(),
                                 EIDMake = reader["EIDMake"] == DBNull.Value ? null : reader["EIDMake"].ToString(),
                                 EIDSerialNo = reader["EIDSerialNo"] == DBNull.Value ? null : reader["EIDSerialNo"].ToString(),
                                 EIDWarranty = reader["EIDWarranty"] == DBNull.Value ? null : reader["EIDWarranty"].ToString(),
@@ -420,36 +422,32 @@ inner join Reason r on d.ReasonId = r.ReasonId
             detailsTable.AddCell(titleCell);
             document.Add(detailsTable);
 
-            //// Only add rows if values are not null
-            //if (doc.EIDDateOfPurchase.HasValue || !string.IsNullOrEmpty(doc.EIDWarranty) ||
-            //    !string.IsNullOrEmpty(doc.EIDMake) || !string.IsNullOrEmpty(doc.EIDModel) ||
-            //    !string.IsNullOrEmpty(doc.EIDSerialNo))
-            //{
-            //    AddCell(table, "Date of Purchase", normalFont, true);
-            //    AddCell(table, doc.EIDDateOfPurchase?.ToString("dd/MM/yyyy") ?? "", normalFont, false);
-            //    AddCell(table, "Warranty", normalFont, true);
-            //    AddCell(table, doc.EIDWarranty ?? "", normalFont, false);
-            //    AddCell(table, "", normalFont, false);
-            //    AddCell(table, "", normalFont, false);
+            // Check each field individually and assign "N/A" if null
+            if (doc.EIDDateOfPurchase == null) doc.EIDDateOfPurchase = "N/A";
+            if (string.IsNullOrWhiteSpace(doc.EIDWarranty)) doc.EIDWarranty = "N/A";
+            if (string.IsNullOrWhiteSpace(doc.EIDMake)) doc.EIDMake = "N/A";
+            if (string.IsNullOrWhiteSpace(doc.EIDModel)) doc.EIDModel = "N/A";
+            if (string.IsNullOrWhiteSpace(doc.EIDSerialNo)) doc.EIDSerialNo = "N/A";
 
-            //    AddCell(table, "Make", normalFont, true);
-            //    AddCell(table, doc.EIDMake ?? "", normalFont, false);
-            //    AddCell(table, "Model", normalFont, true);
-            //    AddCell(table, doc.EIDModel ?? "", normalFont, false);
-            //    AddCell(table, "", normalFont, false);
-            //    AddCell(table, "", normalFont, false);
+            var topTable = new PdfPTable(4) { WidthPercentage = 100 };
+            topTable.SetWidths(new float[] { 25f, 25f, 25f, 25f }); // Equal width columns
 
-            //    AddCell(table, "Serial Number", normalFont, true);
-            //    AddCell(table, doc.EIDSerialNo ?? "", normalFont, false);
-            //    AddCell(table, "", normalFont, false);
-            //    AddCell(table, "", normalFont, false);
-            //    AddCell(table, "", normalFont, false);
-            //    AddCell(table, "", normalFont, false);
+            AddCell(topTable, "Date of Purchase", normalFont, true);
+            AddCell(topTable, doc.EIDDateOfPurchase, normalFont, true);
+            AddCell(topTable, "Warranty", normalFont, true);
+            AddCell(topTable, doc.EIDWarranty, normalFont, true);
 
-            //    document.Add(table);
-            //}
+            AddCell(topTable, "Make", normalFont, true);
+            AddCell(topTable,doc.EIDMake, normalFont, true);
+            AddCell(topTable, "Model", normalFont, true);
+            AddCell(topTable, doc.EIDModel, normalFont, true);
 
-            //document.Add(new Paragraph(" ", normalFont));
+            AddCell(topTable, "Serial Number", normalFont, true);
+            AddCell(topTable, doc.EIDSerialNo, normalFont, true);
+            AddCell(topTable, " ", normalFont, true);
+            AddCell(topTable, " ", normalFont, true);
+
+            document.Add(topTable);
         }
 
         private void CreateCostSummaryTable(Document document, DocumentModel doc, Font headerFont, Font normalFont)
@@ -594,7 +592,8 @@ inner join Reason r on d.ReasonId = r.ReasonId
         public string ITDivisionComment { get; set; }
         public string ITDivisionRecommendation { get; set; }
         public string Remarks { get; set; }
-        public DateTime? EIDDateOfPurchase { get; set; }
+        // public DateTime? EIDDateOfPurchase { get; set; }
+        public string EIDDateOfPurchase { get; set; }
         public string EIDMake { get; set; }
         public string EIDSerialNo { get; set; }
         public string EIDWarranty { get; set; }
