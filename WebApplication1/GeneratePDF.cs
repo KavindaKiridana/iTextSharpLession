@@ -180,6 +180,72 @@ namespace WebApplication1
             return items;
         }
 
+        private string GetReason(int documentId)
+        {
+            string reasonName = null; // Initialize reasonName to null
+
+            // Establish a connection to the SQL Server database
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                try
+                {
+                    connection.Open(); // Open the database connection
+
+                    // SQL query to retrieve the ReasonId from the Document table
+                    string getReasonIdQuery = "SELECT ReasonId FROM Document WHERE DocumentId = @DocumentId";
+
+                    // Create a SqlCommand object for the first query
+                    using (SqlCommand command = new SqlCommand(getReasonIdQuery, connection))
+                    {
+                        // Add parameter to prevent SQL injection
+                        command.Parameters.AddWithValue("@DocumentId", documentId);
+
+                        // Execute the query and get the ReasonId
+                        object reasonIdObj = command.ExecuteScalar();
+
+                        // Check if a ReasonId was found for the given DocumentId
+                        if (reasonIdObj != null && reasonIdObj != DBNull.Value)
+                        {
+                            int reasonId = Convert.ToInt32(reasonIdObj); // Convert to integer
+
+                            // SQL query to retrieve the RName from the Reason table using the retrieved ReasonId
+                            string getReasonNameQuery = "SELECT RName FROM Reason WHERE ReasonId = @ReasonId";
+
+                            // Create a new SqlCommand object for the second query
+                            using (SqlCommand reasonNameCommand = new SqlCommand(getReasonNameQuery, connection))
+                            {
+                                // Add parameter for the second query
+                                reasonNameCommand.Parameters.AddWithValue("@ReasonId", reasonId);
+
+                                // Execute the query and get the RName
+                                object rNameObj = reasonNameCommand.ExecuteScalar();
+
+                                // Check if an RName was found
+                                if (rNameObj != null && rNameObj != DBNull.Value)
+                                {
+                                    reasonName = rNameObj.ToString(); // Convert to string
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Reason name not found for ReasonId: {reasonId}");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Document with DocumentId: {documentId} not found, or ReasonId is missing.");
+                        }
+                    }
+                }
+               
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                }
+            }
+            return reasonName;
+        }
+
         private string GetCurrency(int documentId)
         {
             string currency = "LKR";
@@ -297,49 +363,127 @@ namespace WebApplication1
             //document.Add(new Paragraph(" ", normalFont));
         }
 
+        //private void CreateRequisitionDetails(Document document, DocumentModel doc, Font headerFont, Font normalFont)
+        //{
+        //    document.Add(new Paragraph("Requisition Details", headerFont));
+
+        //    var table = new PdfPTable(4) { WidthPercentage = 100 };
+        //    table.SetWidths(new float[] { 25f, 25f, 25f, 25f });
+
+        //    // Row 1
+        //    AddCell(table, "Date", normalFont, true);
+        //    AddCell(table, doc.SavedTime.ToString("dd/MM/yyyy"), normalFont, false);
+        //    AddCell(table, "Requested By", normalFont, true);
+        //    AddCell(table, doc.RequestedByName, normalFont, false);
+
+        //    // Row 2
+        //    AddCell(table, "Invoice Company", normalFont, true);
+        //    AddCell(table, doc.CompanyName, normalFont, false);
+        //    AddCell(table, "Allocation Department", normalFont, true);
+        //    AddCell(table, doc.DepartmentName, normalFont, false);
+
+        //    // Row 3
+        //    AddCell(table, "Division Head", normalFont, true);
+        //    AddCell(table, doc.DepartmentHeadName, normalFont, false);
+        //    AddCell(table, "Budgeted", normalFont, true);
+        //    AddCell(table, doc.Budgeted ? "Yes" : "No", normalFont, false);
+
+        //    // Row 4 - Requirement Items and Suppliers
+        //    var itemsText = string.Join("\n", doc.RequestedItems.ConvertAll(x => x.Description));
+        //    var suppliersText = string.Join("\n", doc.RequestedItems.ConvertAll(x => x.SupplierName).Distinct());
+
+        //    AddCell(table, "Requirement (Item)", normalFont, true);
+        //    AddCell(table, itemsText, normalFont, false);
+        //    AddCell(table, "Used by / To whom", normalFont, true);
+        //    AddCell(table, doc.UsedByDepartmentName, normalFont, false);
+
+        //    // Row 5
+        //    AddCell(table, "Purchase Order Supplier", normalFont, true);
+        //    var supplierCell = new PdfPCell(new Phrase(suppliersText, normalFont));
+        //    supplierCell.Colspan = 3;
+        //    table.AddCell(supplierCell);
+
+        //    document.Add(table);
+        //}
+
         private void CreateRequisitionDetails(Document document, DocumentModel doc, Font headerFont, Font normalFont)
         {
-            document.Add(new Paragraph("Requisition Details", headerFont));
+            // Create the first table - 2x2 grid (Date, Requested By, Invoice Company, Allocation Department)
+            var topTable = new PdfPTable(2) { WidthPercentage = 100 };
+            topTable.SetWidths(new float[] { 50f, 50f }); // Equal width columns
 
-            var table = new PdfPTable(4) { WidthPercentage = 100 };
-            table.SetWidths(new float[] { 25f, 25f, 25f, 25f });
+            // Row 1: Date and Requested By
+            AddCell(topTable, "Date", normalFont, true);
+            AddCell(topTable, "Requested By", normalFont, true);
 
-            // Row 1
-            AddCell(table, "Date", normalFont, true);
-            AddCell(table, doc.SavedTime.ToString("dd/MM/yyyy"), normalFont, false);
-            AddCell(table, "Requested By", normalFont, true);
-            AddCell(table, doc.RequestedByName, normalFont, false);
+            // Row 2: Invoice Company and Allocation Department  
+            AddCell(topTable, "Invoice Company", normalFont, true);
+            AddCell(topTable, "Allocation Department", normalFont, true);
 
-            // Row 2
-            AddCell(table, "Invoice Company", normalFont, true);
-            AddCell(table, doc.CompanyName, normalFont, false);
-            AddCell(table, "Allocation Department", normalFont, true);
-            AddCell(table, doc.DepartmentName, normalFont, false);
+            document.Add(topTable);
 
-            // Row 3
-            AddCell(table, "Division Head", normalFont, true);
-            AddCell(table, doc.DepartmentHeadName, normalFont, false);
-            AddCell(table, "Budgeted", normalFont, true);
-            AddCell(table, doc.Budgeted ? "Yes" : "No", normalFont, false);
+            // Create the second table - Reason and Division Head row
+            var middleTable = new PdfPTable(3) { WidthPercentage = 100 };
+            middleTable.SetWidths(new float[] { 40f, 30f, 30f }); // Reason takes more space
 
-            // Row 4 - Requirement Items and Suppliers
-            var itemsText = string.Join("\n", doc.RequestedItems.ConvertAll(x => x.Description));
-            var suppliersText = string.Join("\n", doc.RequestedItems.ConvertAll(x => x.SupplierName).Distinct());
+            AddCell(middleTable, "Reason", normalFont, true);
+            AddCell(middleTable, "Reason", normalFont, true);
+            AddCell(middleTable, "Division Head", normalFont, true);
+            AddCell(middleTable, doc.DepartmentHeadName, normalFont, false);
 
-            AddCell(table, "Requirement (Item)", normalFont, true);
-            AddCell(table, itemsText, normalFont, false);
-            AddCell(table, "Used by / To whom", normalFont, true);
-            AddCell(table, doc.UsedByDepartmentName, normalFont, false);
+            document.Add(middleTable);
 
-            // Row 5
-            AddCell(table, "Purchase Order Supplier", normalFont, true);
-            var supplierCell = new PdfPCell(new Phrase(suppliersText, normalFont));
-            supplierCell.Colspan = 3;
-            table.AddCell(supplierCell);
+            // Create the main requisition details table
+            var detailsTable = new PdfPTable(1) { WidthPercentage = 100 };
 
-            document.Add(table);
-            document.Add(new Paragraph(" ", normalFont));
+            // Title row spanning full width
+            var titleCell = new PdfPCell(new Phrase("Requisition Details", headerFont));
+            titleCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            titleCell.Padding = 5f;
+            detailsTable.AddCell(titleCell);
+
+            document.Add(detailsTable);
+
+            // Create the requirement details table - 2 columns
+            var requirementTable = new PdfPTable(2) { WidthPercentage = 100 };
+            requirementTable.SetWidths(new float[] { 50f, 50f });
+
+            // Left side: Requirement (Item) with Purchase Order Supplier underneath
+            var leftCell = new PdfPCell();
+            leftCell.AddElement(new Paragraph("Requirement (Item)", normalFont));
+            leftCell.AddElement(new Paragraph("Purchase Order", normalFont));
+            leftCell.AddElement(new Paragraph("Supplier", normalFont));
+
+            // Right side: Used by / To whom with Budgeted options
+            var rightCell = new PdfPCell();
+            rightCell.AddElement(new Paragraph("Used by / To whom", normalFont));
+
+            // Create budgeted options table within the right cell
+            var budgetedTable = new PdfPTable(3);
+            budgetedTable.SetWidths(new float[] { 33f, 33f, 34f });
+            budgetedTable.WidthPercentage = 100;
+
+            AddCell(budgetedTable, "Budgeted", normalFont, true);
+            AddCell(budgetedTable, "Yes", normalFont, true);
+            AddCell(budgetedTable, "NO", normalFont, true);
+
+            // Add another row for N/A
+            var naCell = new PdfPCell(new Phrase("N/A", normalFont));
+            naCell.Colspan = 3;
+            naCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            budgetedTable.AddCell(naCell);
+
+            rightCell.AddElement(budgetedTable);
+
+            requirementTable.AddCell(leftCell);
+            requirementTable.AddCell(rightCell);
+
+            document.Add(requirementTable);
+
+            // Add minimal spacing
+            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));
         }
+
 
         private void CreateExistingItemDetails(Document document, DocumentModel doc, Font headerFont, Font normalFont)
         {
@@ -493,7 +637,7 @@ namespace WebApplication1
             var cell = new PdfPCell(new Phrase(text, font));
             if (isHeader)
             {
-                cell.BackgroundColor = BaseColor.LIGHT_GRAY;
+                //cell.BackgroundColor = BaseColor.LIGHT_GRAY;
             }
             table.AddCell(cell);
         }
