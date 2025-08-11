@@ -452,10 +452,17 @@ inner join Reason r on d.ReasonId = r.ReasonId
 
         private void CreateCostSummaryTable(Document document, DocumentModel doc, Font headerFont, Font normalFont)
         {
-            document.Add(new Paragraph("Costing & Configuration (If repair only quotation will be attached)", headerFont));
+            //var detailsTable = new PdfPTable(2) { WidthPercentage = 100 };
+            //// Title row spanning full width
+            //var titleCell = new PdfPCell(new Phrase("Existing Item Details (If the item is not a new/ new project)", headerFont));
+            //titleCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            //detailsTable.AddCell(titleCell);
+            //document.Add(detailsTable);
+
+            //document.Add(new Paragraph("Costing & Configuration (If repair only quotation will be attached)", headerFont));
 
             // Configuration options
-            var configTable = new PdfPTable(6) { WidthPercentage = 100 };
+            var configTable = new PdfPTable(3) { WidthPercentage = 50 };
 
             AddCell(configTable, "Quotation", normalFont, true);
             AddCell(configTable, GetBooleanDisplay(doc.Quotation), normalFont, false);
