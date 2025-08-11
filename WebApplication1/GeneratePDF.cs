@@ -1,4 +1,6 @@
-﻿using System;
+﻿using iTextSharp.text;
+using iTextSharp.text.pdf;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
@@ -6,16 +8,15 @@ using System.Data.SqlClient;
 using System.Drawing.Printing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Web;
+using System.Web.DynamicData;
 using System.Xml.Linq;
 // Avoid using System.Drawing directly if not needed
 using DrawingFont = System.Drawing.Font;
 using DrawingRectangle = System.Drawing.Rectangle;
 using iTextFont = iTextSharp.text.Font;
 using iTextRectangle = iTextSharp.text.Rectangle;
-using iTextSharp.text;
-using iTextSharp.text.pdf;
-using System.Web.DynamicData;
 
 namespace WebApplication1
 {
@@ -114,7 +115,6 @@ inner join Reason r on d.ReasonId = r.ReasonId
                                 ITDivisionComment = reader["ITDivisionComment"].ToString(),
                                 ITDivisionRecommendation = reader["ITDivisionRecommendation"] == DBNull.Value ? null : reader["ITDivisionRecommendation"].ToString(),
                                 Remarks = reader["Remarks"] == DBNull.Value ? null : reader["Remarks"].ToString(),
-                                // EIDDateOfPurchase = reader["EIDDateOfPurchase"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(reader["EIDDateOfPurchase"]),
                                 EIDDateOfPurchase = reader["EIDDateOfPurchase"] == DBNull.Value ? "N/A" : Convert.ToDateTime(reader["EIDDateOfPurchase"]).ToString(),
                                 EIDMake = reader["EIDMake"] == DBNull.Value ? null : reader["EIDMake"].ToString(),
                                 EIDSerialNo = reader["EIDSerialNo"] == DBNull.Value ? null : reader["EIDSerialNo"].ToString(),
@@ -303,54 +303,11 @@ inner join Reason r on d.ReasonId = r.ReasonId
             //document.Add(new Paragraph(" ", normalFont));
         }
 
-        //private void CreateRequisitionDetails(Document document, DocumentModel doc, Font headerFont, Font normalFont)
-        //{
-        //    document.Add(new Paragraph("Requisition Details", headerFont));
-
-        //    var table = new PdfPTable(4) { WidthPercentage = 100 };
-        //    table.SetWidths(new float[] { 25f, 25f, 25f, 25f });
-
-        //    // Row 1
-        //    AddCell(table, "Date", normalFont, true);
-        //    AddCell(table, doc.SavedTime.ToString("dd/MM/yyyy"), normalFont, false);
-        //    AddCell(table, "Requested By", normalFont, true);
-        //    AddCell(table, doc.RequestedByName, normalFont, false);
-
-        //    // Row 2
-        //    AddCell(table, "Invoice Company", normalFont, true);
-        //    AddCell(table, doc.CompanyName, normalFont, false);
-        //    AddCell(table, "Allocation Department", normalFont, true);
-        //    AddCell(table, doc.DepartmentName, normalFont, false);
-
-        //    // Row 3
-        //    AddCell(table, "Division Head", normalFont, true);
-        //    AddCell(table, doc.DepartmentHeadName, normalFont, false);
-        //    AddCell(table, "Budgeted", normalFont, true);
-        //    AddCell(table, doc.Budgeted ? "Yes" : "No", normalFont, false);
-
-        //    // Row 4 - Requirement Items and Suppliers
-        //    var itemsText = string.Join("\n", doc.RequestedItems.ConvertAll(x => x.Description));
-        //    var suppliersText = string.Join("\n", doc.RequestedItems.ConvertAll(x => x.SupplierName).Distinct());
-
-        //    AddCell(table, "Requirement (Item)", normalFont, true);
-        //    AddCell(table, itemsText, normalFont, false);
-        //    AddCell(table, "Used by / To whom", normalFont, true);
-        //    AddCell(table, doc.UsedByDepartmentName, normalFont, false);
-
-        //    // Row 5
-        //    AddCell(table, "Purchase Order Supplier", normalFont, true);
-        //    var supplierCell = new PdfPCell(new Phrase(suppliersText, normalFont));
-        //    supplierCell.Colspan = 3;
-        //    table.AddCell(supplierCell);
-
-        //    document.Add(table);
-        //}
-
         private void CreateRequisitionDetails(Document document, DocumentModel doc, Font headerFont, Font normalFont)
         {
             // Create the first table - 2x2 grid (Date, Requested By, Invoice Company, Allocation Department)
             var topTable = new PdfPTable(4) { WidthPercentage = 100 };
-            topTable.SetWidths(new float[] { 25f, 25f,25f,25f }); // Equal width columns
+            topTable.SetWidths(new float[] { 25f, 25f, 25f, 25f }); // Equal width columns
 
             // Row 1: Date and Requested By
             AddCell(topTable, "Date", normalFont, true);
@@ -358,17 +315,24 @@ inner join Reason r on d.ReasonId = r.ReasonId
             AddCell(topTable, "Requested By", normalFont, true);
             AddCell(topTable, doc.RequestedByName, normalFont, true);
 
-            // Row 2: Invoice Company and Allocation Department  
-            AddCell(topTable, "Invoice Company", normalFont, true);
-            AddCell(topTable, doc.CompanyName, normalFont, true);
-            AddCell(topTable, "Allocation Department", normalFont, true);
-            AddCell(topTable, doc.DepartmentName, normalFont, true);
-
             document.Add(topTable);
+            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));// Add minimal spacing
+
+            var topTable2 = new PdfPTable(4) { WidthPercentage = 100 };
+            topTable.SetWidths(new float[] { 25f, 25f, 25f, 25f });
+
+            // Row 2: Invoice Company and Allocation Department  
+            AddCell(topTable2, "Invoice Company", normalFont, true);
+            AddCell(topTable2, doc.CompanyName, normalFont, true);
+            AddCell(topTable2, "Allocation Department", normalFont, true);
+            AddCell(topTable2, doc.DepartmentName, normalFont, true);
+
+            document.Add(topTable2);
+            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));// Add minimal spacing
 
             // Create the second table - Reason and Division Head row
             var middleTable = new PdfPTable(4) { WidthPercentage = 100 };
-            middleTable.SetWidths(new float[] { 25f, 25f, 25f,25f }); 
+            middleTable.SetWidths(new float[] { 25f, 25f, 25f, 25f });
 
             AddCell(middleTable, "Reason", normalFont, true);
             AddCell(middleTable, doc.Reason, normalFont, true);
@@ -376,6 +340,7 @@ inner join Reason r on d.ReasonId = r.ReasonId
             AddCell(middleTable, doc.DepartmentHeadName, normalFont, false);
 
             document.Add(middleTable);
+            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));
 
             // Create the main requisition details table
             var detailsTable = new PdfPTable(1) { WidthPercentage = 100 };
@@ -393,7 +358,7 @@ inner join Reason r on d.ReasonId = r.ReasonId
             var suppliersText = string.Join(", ", doc.RequestedItems.ConvertAll(x => x.SupplierName).Distinct());
 
             var bottomTable = new PdfPTable(4) { WidthPercentage = 100 };
-            bottomTable.SetWidths(new float[] { 20f,40f,20f,20f});
+            bottomTable.SetWidths(new float[] { 20f, 40f, 20f, 20f });
             AddCell(bottomTable, "Requirement", normalFont, true);
             AddCell(bottomTable, itemsText, normalFont, true);
             AddCell(bottomTable, "Used by/To whom", normalFont, true);
@@ -405,9 +370,9 @@ inner join Reason r on d.ReasonId = r.ReasonId
             AddCell(bottomTable, doc.Budgeted ? "Yes" : "No", normalFont, false);
 
             document.Add(bottomTable);
-           
+
             // Add minimal spacing
-            //document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));
+            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));
         }
 
 
@@ -430,15 +395,16 @@ inner join Reason r on d.ReasonId = r.ReasonId
             if (string.IsNullOrWhiteSpace(doc.EIDSerialNo)) doc.EIDSerialNo = "N/A";
 
             var topTable = new PdfPTable(4) { WidthPercentage = 100 };
-            topTable.SetWidths(new float[] { 25f, 25f, 25f, 25f }); // Equal width columns
+            topTable.SetWidths(new float[] { 25f, 25f, 25f, 25f });
 
+            doc.EIDDateOfPurchase = Convert.ToDateTime(doc.EIDDateOfPurchase).ToShortDateString();
             AddCell(topTable, "Date of Purchase", normalFont, true);
             AddCell(topTable, doc.EIDDateOfPurchase, normalFont, true);
             AddCell(topTable, "Warranty", normalFont, true);
             AddCell(topTable, doc.EIDWarranty, normalFont, true);
 
             AddCell(topTable, "Make", normalFont, true);
-            AddCell(topTable,doc.EIDMake, normalFont, true);
+            AddCell(topTable, doc.EIDMake, normalFont, true);
             AddCell(topTable, "Model", normalFont, true);
             AddCell(topTable, doc.EIDModel, normalFont, true);
 
@@ -448,63 +414,164 @@ inner join Reason r on d.ReasonId = r.ReasonId
             AddCell(topTable, " ", normalFont, true);
 
             document.Add(topTable);
+            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));
         }
 
         private void CreateCostSummaryTable(Document document, DocumentModel doc, Font headerFont, Font normalFont)
         {
-            //var detailsTable = new PdfPTable(2) { WidthPercentage = 100 };
-            //// Title row spanning full width
-            //var titleCell = new PdfPCell(new Phrase("Existing Item Details (If the item is not a new/ new project)", headerFont));
-            //titleCell.HorizontalAlignment = Element.ALIGN_CENTER;
-            //detailsTable.AddCell(titleCell);
-            //document.Add(detailsTable);
+            // Create main table with 8 columns to match the image layout
+            var mainTable = new PdfPTable(8) { WidthPercentage = 100 };
+            mainTable.SetWidths(new float[] { 24f, 10f, 10f, 15f, 20f, 8f, 12f, 15f });
 
-            //document.Add(new Paragraph("Costing & Configuration (If repair only quotation will be attached)", headerFont));
+            // First row - Main headers
+            var configHeaderCell = new PdfPCell(new Phrase("Costing & Configuration (If repair only quotation will be attached)", headerFont));
+            configHeaderCell.Colspan = 3;
+            configHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            configHeaderCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            configHeaderCell.Border = Rectangle.BOX;
+            mainTable.AddCell(configHeaderCell);
 
-            // Configuration options
-            var configTable = new PdfPTable(3) { WidthPercentage = 50 };
+            var costHeaderCell = new PdfPCell(new Phrase("Cost Summary & Recommended Supplier", headerFont));
+            costHeaderCell.Colspan = 5;
+            costHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            costHeaderCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            costHeaderCell.Border = Rectangle.BOX;
+            mainTable.AddCell(costHeaderCell);
 
-            AddCell(configTable, "Quotation", normalFont, true);
-            AddCell(configTable, GetBooleanDisplay(doc.Quotation), normalFont, false);
-            AddCell(configTable, "Configuration Evaluation", normalFont, true);
-            AddCell(configTable, GetBooleanDisplay(doc.Configuration), normalFont, false);
-            AddCell(configTable, "Cost Breakdown", normalFont, true);
-            AddCell(configTable, GetBooleanDisplay(doc.CostBreakdown), normalFont, false);
+            // Second row - Sub headers for left side and cost summary headers
+            var descriptionHeaderCell = new PdfPCell(new Phrase("Description", headerFont));
+            descriptionHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            descriptionHeaderCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            descriptionHeaderCell.Border = Rectangle.BOX;
+            mainTable.AddCell(descriptionHeaderCell);
 
-            document.Add(configTable);
-            document.Add(new Paragraph(" ", normalFont));
+            var attachedHeaderCell = new PdfPCell(new Phrase("Attached", headerFont));
+            attachedHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            attachedHeaderCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            attachedHeaderCell.Border = Rectangle.BOX;
+            mainTable.AddCell(attachedHeaderCell);
 
-            // Cost Summary Table
-            document.Add(new Paragraph("Cost Summary & Recommended Supplier", headerFont));
+            var notAttachedHeaderCell = new PdfPCell(new Phrase("Not Attached", headerFont));
+            notAttachedHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            notAttachedHeaderCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            notAttachedHeaderCell.Border = Rectangle.BOX;
+            mainTable.AddCell(notAttachedHeaderCell);
 
-            var costTable = new PdfPTable(5) { WidthPercentage = 100 };
-            costTable.SetWidths(new float[] { 20f, 30f, 15f, 15f, 20f });
+            var supplierHeaderCell = new PdfPCell(new Phrase("Supplier", headerFont));
+            supplierHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            supplierHeaderCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            supplierHeaderCell.Border = Rectangle.BOX;
+            mainTable.AddCell(supplierHeaderCell);
 
-            // Header
-            AddCell(costTable, "Supplier", normalFont, true);
-            AddCell(costTable, "Description", normalFont, true);
-            AddCell(costTable, "Qty", normalFont, true);
-            AddCell(costTable, "Unit Price", normalFont, true);
-            AddCell(costTable, $"Total - {doc.Currency}", normalFont, true);
+            var descriptionHeaderCell2 = new PdfPCell(new Phrase("Description", headerFont));
+            descriptionHeaderCell2.HorizontalAlignment = Element.ALIGN_CENTER;
+            descriptionHeaderCell2.VerticalAlignment = Element.ALIGN_MIDDLE;
+            descriptionHeaderCell2.Border = Rectangle.BOX;
+            mainTable.AddCell(descriptionHeaderCell2);
 
-            // Data rows
-            foreach (var item in doc.RequestedItems)
+            var qtyHeaderCell = new PdfPCell(new Phrase("Qty", headerFont));
+            qtyHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            qtyHeaderCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            qtyHeaderCell.Border = Rectangle.BOX;
+            mainTable.AddCell(qtyHeaderCell);
+
+            var unitPriceHeaderCell = new PdfPCell(new Phrase("Unit Price", headerFont));
+            unitPriceHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            unitPriceHeaderCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            unitPriceHeaderCell.Border = Rectangle.BOX;
+            mainTable.AddCell(unitPriceHeaderCell);
+
+            var totalHeaderCell = new PdfPCell(new Phrase($"Total - {doc.Currency}", headerFont));
+            totalHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            totalHeaderCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            totalHeaderCell.Border = Rectangle.BOX;
+            mainTable.AddCell(totalHeaderCell);
+
+            // Configuration rows
+            string[] configItems = { "Quotation", "Configuration Evaluation", "Cost Breakdown" };
+            bool?[] configValues = { doc.Quotation, doc.Configuration, doc.CostBreakdown };
+
+            int maxRows = Math.Max(configItems.Length, doc.RequestedItems?.Count ?? 0);
+
+            for (int i = 0; i < maxRows; i++)
             {
-                var total = item.Qty * item.UnitPrice;
-                AddCell(costTable, item.SupplierName, normalFont, false);
-                AddCell(costTable, item.Description, normalFont, false);
-                AddCell(costTable, item.Qty.ToString(), normalFont, false);
-                AddCell(costTable, item.UnitPrice.ToString("N2"), normalFont, false);
-                AddCell(costTable, total.ToString("N2"), normalFont, false);
+                // Left side - Configuration items
+                if (i < configItems.Length)
+                {
+                    AddCell(mainTable, configItems[i], normalFont, false);
+
+                    // Attached column
+                    var attachedCell = new PdfPCell(new Phrase((configValues[i] == true) ? "✓" : "", normalFont));
+                    attachedCell.HorizontalAlignment = Element.ALIGN_CENTER;
+                    attachedCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+                    attachedCell.Border = Rectangle.BOX;
+                    mainTable.AddCell(attachedCell);
+
+                    // Not Attached column  
+                    var notAttachedCell = new PdfPCell(new Phrase((configValues[i] == false) ? "✓" : "", normalFont));
+                    notAttachedCell.HorizontalAlignment = Element.ALIGN_CENTER;
+                    notAttachedCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+                    notAttachedCell.Border = Rectangle.BOX;
+                    mainTable.AddCell(notAttachedCell);
+
+                    // Supplier column (empty for config items)
+                    AddCell(mainTable, "", normalFont, false);
+                }
+                else
+                {
+                    // Empty cells for configuration section
+                    for (int j = 0; j < 4; j++)
+                    {
+                        AddCell(mainTable, "", normalFont, false);
+                    }
+                }
+
+                // Right side - Cost summary items
+                if (i < (doc.RequestedItems?.Count ?? 0))
+                {
+                    var item = doc.RequestedItems[i];
+                    var total = item.Qty * item.UnitPrice;
+                    AddCell(mainTable,item.SupplierName, normalFont, false); //i want to add supplier name here,but when i add it here
+                    //i mashed up the whole form (it totally went wrong even thought their is no programaticaly errors)
+                    //plx fix it ,give me only modified codes
+                    AddCell(mainTable, item.Description, normalFont, false);
+                    AddCell(mainTable, item.Qty.ToString(), normalFont, false);
+                    AddCell(mainTable, item.UnitPrice.ToString("N2"), normalFont, false);
+                    AddCell(mainTable, total.ToString("N2"), normalFont, false);
+                }
+                else
+                {
+                    // Empty cells for cost summary section
+                    for (int j = 0; j < 4; j++)
+                    {
+                        AddCell(mainTable, "", normalFont, false);
+                    }
+                }
             }
 
-            // Total row
-            var totalCell = new PdfPCell(new Phrase($"Total Cost - {doc.Currency} (without SSC): {doc.TotalCost:N2}", headerFont));
-            totalCell.Colspan = 5;
-            totalCell.HorizontalAlignment = Element.ALIGN_RIGHT;
-            costTable.AddCell(totalCell);
+            // Add confirmation row
+            var confirmationCell = new PdfPCell(new Phrase("Costing, Configuration & recommendation confirmed by", normalFont));
+            confirmationCell.Colspan = 4;
+            confirmationCell.HorizontalAlignment = Element.ALIGN_LEFT;
+            confirmationCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            confirmationCell.Border = Rectangle.BOX;
+            mainTable.AddCell(confirmationCell);
 
-            document.Add(costTable);
+            // Total cost row
+            var totalCostCell = new PdfPCell(new Phrase($"Total Cost - {doc.Currency} (without SSC)", normalFont));
+            totalCostCell.Colspan = 3;
+            totalCostCell.HorizontalAlignment = Element.ALIGN_RIGHT;
+            totalCostCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            totalCostCell.Border = Rectangle.BOX;
+            mainTable.AddCell(totalCostCell);
+
+            var totalValueCell = new PdfPCell(new Phrase(doc.TotalCost.ToString("N2"), normalFont));
+            totalValueCell.HorizontalAlignment = Element.ALIGN_RIGHT;
+            totalValueCell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            totalValueCell.Border = Rectangle.BOX;
+            mainTable.AddCell(totalValueCell);
+
+            document.Add(mainTable);
             document.Add(new Paragraph(" ", normalFont));
         }
 
