@@ -115,7 +115,7 @@ inner join Reason r on d.ReasonId = r.ReasonId
                                 ITDivisionComment = reader["ITDivisionComment"].ToString(),
                                 ITDivisionRecommendation = reader["ITDivisionRecommendation"] == DBNull.Value ? null : reader["ITDivisionRecommendation"].ToString(),
                                 Remarks = reader["Remarks"] == DBNull.Value ? null : reader["Remarks"].ToString(),
-                                EIDDateOfPurchase = reader["EIDDateOfPurchase"] == DBNull.Value ? "N/A" : Convert.ToDateTime(reader["EIDDateOfPurchase"]).ToString(),
+                                EIDDateOfPurchase = reader["EIDDateOfPurchase"] == DBNull.Value ? "N/A" : Convert.ToDateTime(reader["EIDDateOfPurchase"]).ToString("yyyy-MM-dd"),
                                 EIDMake = reader["EIDMake"] == DBNull.Value ? null : reader["EIDMake"].ToString(),
                                 EIDSerialNo = reader["EIDSerialNo"] == DBNull.Value ? null : reader["EIDSerialNo"].ToString(),
                                 EIDWarranty = reader["EIDWarranty"] == DBNull.Value ? null : reader["EIDWarranty"].ToString(),
@@ -387,8 +387,8 @@ inner join Reason r on d.ReasonId = r.ReasonId
             detailsTable.AddCell(titleCell);
             document.Add(detailsTable);
 
+
             // Check each field individually and assign "N/A" if null
-            if (doc.EIDDateOfPurchase == null) doc.EIDDateOfPurchase = "N/A";
             if (string.IsNullOrWhiteSpace(doc.EIDWarranty)) doc.EIDWarranty = "N/A";
             if (string.IsNullOrWhiteSpace(doc.EIDMake)) doc.EIDMake = "N/A";
             if (string.IsNullOrWhiteSpace(doc.EIDModel)) doc.EIDModel = "N/A";
@@ -397,7 +397,6 @@ inner join Reason r on d.ReasonId = r.ReasonId
             var topTable = new PdfPTable(4) { WidthPercentage = 100 };
             topTable.SetWidths(new float[] { 25f, 25f, 25f, 25f });
 
-            doc.EIDDateOfPurchase = Convert.ToDateTime(doc.EIDDateOfPurchase).ToShortDateString();
             AddCell(topTable, "Date of Purchase", normalFont, true);
             AddCell(topTable, doc.EIDDateOfPurchase, normalFont, true);
             AddCell(topTable, "Warranty", normalFont, true);
@@ -531,7 +530,7 @@ inner join Reason r on d.ReasonId = r.ReasonId
                 {
                     var item = doc.RequestedItems[i];
                     var total = item.Qty * item.UnitPrice;
-                    AddCell(mainTable,item.SupplierName, normalFont, false); //i want to add supplier name here,but when i add it here
+                    //  AddCell(mainTable,item.SupplierName, normalFont, false); //i want to add supplier name here,but when i add it here
                     //i mashed up the whole form (it totally went wrong even thought their is no programaticaly errors)
                     //plx fix it ,give me only modified codes
                     AddCell(mainTable, item.Description, normalFont, false);
