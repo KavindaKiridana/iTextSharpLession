@@ -266,7 +266,7 @@ inner join Reason r on d.ReasonId = r.ReasonId
             leftCell.Border = Rectangle.NO_BORDER;
             leftCell.HorizontalAlignment = Element.ALIGN_LEFT;
             leftCell.VerticalAlignment = Element.ALIGN_TOP;
-            leftCell.AddElement(new Paragraph("Form:IT-PD-01.0", normalFont));
+            leftCell.AddElement(new Paragraph("Form:IT-PD-01.1", normalFont));
 
             // Center cell - Title and Company
             var centerCell = new PdfPCell();
@@ -289,7 +289,7 @@ inner join Reason r on d.ReasonId = r.ReasonId
             rightCell.Border = Rectangle.NO_BORDER;
             rightCell.HorizontalAlignment = Element.ALIGN_RIGHT;
             rightCell.VerticalAlignment = Element.ALIGN_TOP;
-            rightCell.AddElement(new Paragraph($"Serial No:RGIT/2025/0001", normalFont));
+            rightCell.AddElement(new Paragraph($"Serial No:" + GenerateSerialNumber(doc), normalFont));
 
             // Add cells to table
             headerTable.AddCell(leftCell);
@@ -375,7 +375,6 @@ inner join Reason r on d.ReasonId = r.ReasonId
             document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));
         }
 
-
         private void CreateExistingItemDetails(Document document, DocumentModel doc, Font headerFont, Font normalFont)
         {
             // Create the main requisition details table
@@ -386,7 +385,6 @@ inner join Reason r on d.ReasonId = r.ReasonId
             //titleCell.Padding = 5f;
             detailsTable.AddCell(titleCell);
             document.Add(detailsTable);
-
 
             // Check each field individually and assign "N/A" if null
             if (string.IsNullOrWhiteSpace(doc.EIDWarranty)) doc.EIDWarranty = "N/A";
@@ -420,7 +418,7 @@ inner join Reason r on d.ReasonId = r.ReasonId
         {
             // Create main table with 8 columns to match the image layout
             var mainTable = new PdfPTable(8) { WidthPercentage = 100 };
-            mainTable.SetWidths(new float[] { 24f, 10f, 10f, 15f, 20f, 8f, 12f, 15f });
+            mainTable.SetWidths(new float[] { 24f, 10f, 10f, 15f, 23f, 5f, 12f, 15f });
 
             // First row - Main headers
             var configHeaderCell = new PdfPCell(new Phrase("Costing & Configuration (If repair only quotation will be attached)", headerFont));
@@ -512,27 +510,31 @@ inner join Reason r on d.ReasonId = r.ReasonId
                     notAttachedCell.VerticalAlignment = Element.ALIGN_MIDDLE;
                     notAttachedCell.Border = Rectangle.BOX;
                     mainTable.AddCell(notAttachedCell);
-
-                    // Supplier column (empty for config items)
-                    AddCell(mainTable, "", normalFont, false);
                 }
                 else
                 {
-                    // Empty cells for configuration section
-                    for (int j = 0; j < 4; j++)
+                    // Empty cells for configuration section (first 3 columns)
+                    for (int j = 0; j < 3; j++)
                     {
                         AddCell(mainTable, "", normalFont, false);
                     }
                 }
 
-                // Right side - Cost summary items
+                // Supplier column (4th column) - show supplier name if we have a requested item
+                if (i < (doc.RequestedItems?.Count ?? 0))
+                {
+                    AddCell(mainTable, doc.RequestedItems[i].SupplierName, normalFont, false);
+                }
+                else
+                {
+                    AddCell(mainTable, "", normalFont, false);
+                }
+
+                // Right side - Cost summary items (last 4 columns)
                 if (i < (doc.RequestedItems?.Count ?? 0))
                 {
                     var item = doc.RequestedItems[i];
                     var total = item.Qty * item.UnitPrice;
-                    //  AddCell(mainTable,item.SupplierName, normalFont, false); //i want to add supplier name here,but when i add it here
-                    //i mashed up the whole form (it totally went wrong even thought their is no programaticaly errors)
-                    //plx fix it ,give me only modified codes
                     AddCell(mainTable, item.Description, normalFont, false);
                     AddCell(mainTable, item.Qty.ToString(), normalFont, false);
                     AddCell(mainTable, item.UnitPrice.ToString("N2"), normalFont, false);
@@ -557,7 +559,7 @@ inner join Reason r on d.ReasonId = r.ReasonId
             mainTable.AddCell(confirmationCell);
 
             // Total cost row
-            var totalCostCell = new PdfPCell(new Phrase($"Total Cost - {doc.Currency} (without SSC)", normalFont));
+            var totalCostCell = new PdfPCell(new Phrase($"Total Cost - {doc.Currency}", normalFont));
             totalCostCell.Colspan = 3;
             totalCostCell.HorizontalAlignment = Element.ALIGN_RIGHT;
             totalCostCell.VerticalAlignment = Element.ALIGN_MIDDLE;
@@ -571,62 +573,204 @@ inner join Reason r on d.ReasonId = r.ReasonId
             mainTable.AddCell(totalValueCell);
 
             document.Add(mainTable);
-            document.Add(new Paragraph(" ", normalFont));
+            // document.Add(new Paragraph(" ", normalFont));//normal line break
+            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));//small line break
         }
 
         private void CreateCommentsSection(Document document, DocumentModel doc, Font headerFont, Font normalFont)
         {
-            document.Add(new Paragraph("IT Division Comments", headerFont));
-            document.Add(new Paragraph(doc.ITDivisionComment ?? "", normalFont));
-            document.Add(new Paragraph(" ", normalFont));
+            // IT Division Comments Section
+            PdfPTable commentsTable = new PdfPTable(1);
+            commentsTable.WidthPercentage = 100;
+            //commentsTable.SpacingBefore = 10f;
+            //commentsTable.SpacingAfter = 5f;
 
-            if (!string.IsNullOrEmpty(doc.ITDivisionRecommendation))
-            {
-                document.Add(new Paragraph("IT Division Recommendation (with justification)", headerFont));
-                document.Add(new Paragraph(doc.ITDivisionRecommendation, normalFont));
-                document.Add(new Paragraph(" ", normalFont));
-            }
+            // Header cell for IT Division Comments
+            PdfPCell headerCell = new PdfPCell(new Phrase("IT Division Comments", headerFont));
+            headerCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            headerCell.Border = Rectangle.BOX;
+            // headerCell.Padding = 5f;
+            commentsTable.AddCell(headerCell);
 
-            if (!string.IsNullOrEmpty(doc.Remarks))
-            {
-                document.Add(new Paragraph("Remarks", headerFont));
-                document.Add(new Paragraph(doc.Remarks, normalFont));
-                document.Add(new Paragraph(" ", normalFont));
-            }
+            // Content cell for IT Division Comments
+            PdfPCell contentCell = new PdfPCell(new Phrase(doc.ITDivisionComment ?? "", normalFont));
+            contentCell.Border = Rectangle.BOX;
+            //  contentCell.Padding = 8f;
+            contentCell.MinimumHeight = 40f;
+            commentsTable.AddCell(contentCell);
+
+            document.Add(commentsTable);
+            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));//small line break
+
+
+            // IT Division Recommendation Section (if exists)
+            //if (!string.IsNullOrEmpty(doc.ITDivisionRecommendation))//you can modify this as only this showing when ITDivisionRecommendation != null
+            //{
+            PdfPTable recommendationTable = new PdfPTable(1);
+            recommendationTable.WidthPercentage = 100;
+            //   recommendationTable.SpacingBefore = 5f;
+            // recommendationTable.SpacingAfter = 5f;
+
+            // Header cell for IT Division Recommendation
+            PdfPCell recHeaderCell = new PdfPCell(new Phrase("IT Division Recommendation (with justification)", headerFont));
+            recHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            recHeaderCell.Border = Rectangle.BOX;
+            //  recHeaderCell.Padding = 5f;
+            recommendationTable.AddCell(recHeaderCell);
+
+            // Content cell for IT Division Recommendation
+            PdfPCell recContentCell = new PdfPCell(new Phrase(doc.ITDivisionRecommendation, normalFont));
+            recContentCell.Border = Rectangle.BOX;
+            // recContentCell.Padding = 8f;
+            recContentCell.MinimumHeight = 40f;
+            recommendationTable.AddCell(recContentCell);
+
+            document.Add(recommendationTable);
+            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));//small line break
+                                                                                     // }
+
+            // Remarks Section (if exists)
+            //if (!string.IsNullOrEmpty(doc.Remarks))
+            //{
+            PdfPTable remarksTable = new PdfPTable(1);
+            remarksTable.WidthPercentage = 100;
+            //  remarksTable.SpacingBefore = 5f;
+            //  remarksTable.SpacingAfter = 10f;
+
+            // Header cell for Remarks
+            PdfPCell remarksHeaderCell = new PdfPCell(new Phrase("Remarks", headerFont));
+            remarksHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            remarksHeaderCell.Border = Rectangle.BOX;
+            // remarksHeaderCell.Padding = 5f;
+            remarksTable.AddCell(remarksHeaderCell);
+
+            // Content cell for Remarks
+            PdfPCell remarksContentCell = new PdfPCell(new Phrase(doc.Remarks, normalFont));
+            remarksContentCell.Border = Rectangle.BOX;
+            // remarksContentCell.Padding = 8f;
+            remarksContentCell.MinimumHeight = 40f;
+            remarksTable.AddCell(remarksContentCell);
+
+            document.Add(remarksTable);
+            document.Add(new Paragraph(" ", new Font(Font.FontFamily.HELVETICA, 4)));//small line break
+
+            //}
         }
 
         private void CreateSignatureSection(Document document, DocumentModel doc, Font headerFont, Font normalFont)
         {
+            // Create signature table with borders
             var sigTable = new PdfPTable(doc.IsMDSign ? 3 : 2) { WidthPercentage = 100 };
+            sigTable.SpacingBefore = 10f;
+            sigTable.SpacingAfter = 10f;
 
-            // IT Manager
-            var itCell = new PdfPCell();
-            itCell.Border = Rectangle.NO_BORDER;
-            itCell.AddElement(new Paragraph("Manager IT", headerFont));
-            itCell.AddElement(new Paragraph(doc.ITManagerName, normalFont));
-            itCell.AddElement(new Paragraph(" ", normalFont));
-            itCell.AddElement(new Paragraph("Signature", normalFont));
-            sigTable.AddCell(itCell);
+            // Set equal column widths
+            if (doc.IsMDSign)
+            {
+                sigTable.SetWidths(new float[] { 33.33f, 33.33f, 33.34f }); // 3 columns
+            }
+            else
+            {
+                sigTable.SetWidths(new float[] { 50f, 50f }); // 2 columns
+            }
 
-            // CEO
-            var ceoCell = new PdfPCell();
-            ceoCell.Border = Rectangle.NO_BORDER;
-            ceoCell.AddElement(new Paragraph("CEO", headerFont));
-            ceoCell.AddElement(new Paragraph(doc.CEOName, normalFont));
-            ceoCell.AddElement(new Paragraph(" ", normalFont));
-            ceoCell.AddElement(new Paragraph("Signature", normalFont));
-            sigTable.AddCell(ceoCell);
+            // IT Manager Column
+            var itManagerHeaderCell = new PdfPCell(new Phrase("Manager IT", headerFont));
+            itManagerHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+          //  itManagerHeaderCell.BackgroundColor = BaseColor.LIGHT_GRAY;
+            itManagerHeaderCell.Border = Rectangle.BOX;
+            itManagerHeaderCell.Padding = 5f;
+            sigTable.AddCell(itManagerHeaderCell);
 
-            // MD (only if required)
+            // CEO Column
+            var ceoHeaderCell = new PdfPCell(new Phrase("CEO", headerFont));
+            ceoHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+         //   ceoHeaderCell.BackgroundColor = BaseColor.LIGHT_GRAY;
+            ceoHeaderCell.Border = Rectangle.BOX;
+            ceoHeaderCell.Padding = 5f;
+            sigTable.AddCell(ceoHeaderCell);
+
+            // MD Column (only if required)
             if (doc.IsMDSign && !string.IsNullOrEmpty(doc.MDName))
             {
-                var mdCell = new PdfPCell();
-                mdCell.Border = Rectangle.NO_BORDER;
-                mdCell.AddElement(new Paragraph("MD", headerFont));
-                mdCell.AddElement(new Paragraph(doc.MDName, normalFont));
-                mdCell.AddElement(new Paragraph(" ", normalFont));
-                mdCell.AddElement(new Paragraph("Signature", normalFont));
-                sigTable.AddCell(mdCell);
+                var mdHeaderCell = new PdfPCell(new Phrase("MD", headerFont));
+                mdHeaderCell.HorizontalAlignment = Element.ALIGN_CENTER;
+             //   mdHeaderCell.BackgroundColor = BaseColor.LIGHT_GRAY;
+                mdHeaderCell.Border = Rectangle.BOX;
+                mdHeaderCell.Padding = 5f;
+                sigTable.AddCell(mdHeaderCell);
+            }
+
+            // Name row
+            var itNameCell = new PdfPCell(new Phrase(doc.ITManagerName, normalFont));
+            itNameCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            itNameCell.Border = Rectangle.BOX;
+            itNameCell.Padding = 5f;
+            itNameCell.MinimumHeight = 25f;
+            sigTable.AddCell(itNameCell);
+
+            var ceoNameCell = new PdfPCell(new Phrase(doc.CEOName, normalFont));
+            ceoNameCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            ceoNameCell.Border = Rectangle.BOX;
+            ceoNameCell.Padding = 5f;
+            ceoNameCell.MinimumHeight = 25f;
+            sigTable.AddCell(ceoNameCell);
+
+            if (doc.IsMDSign && !string.IsNullOrEmpty(doc.MDName))
+            {
+                var mdNameCell = new PdfPCell(new Phrase(doc.MDName, normalFont));
+                mdNameCell.HorizontalAlignment = Element.ALIGN_CENTER;
+                mdNameCell.Border = Rectangle.BOX;
+                mdNameCell.Padding = 5f;
+                mdNameCell.MinimumHeight = 25f;
+                sigTable.AddCell(mdNameCell);
+            }
+
+            // Signature row - larger height for actual signatures
+            var itSigCell = new PdfPCell(new Phrase(" ", normalFont)); // Empty space for signature
+            itSigCell.Border = Rectangle.BOX;
+            itSigCell.Padding = 5f;
+            itSigCell.MinimumHeight = 50f; // More space for signature
+            sigTable.AddCell(itSigCell);
+
+            var ceoSigCell = new PdfPCell(new Phrase(" ", normalFont)); // Empty space for signature
+            ceoSigCell.Border = Rectangle.BOX;
+            ceoSigCell.Padding = 5f;
+            ceoSigCell.MinimumHeight = 50f; // More space for signature
+            sigTable.AddCell(ceoSigCell);
+
+            if (doc.IsMDSign && !string.IsNullOrEmpty(doc.MDName))
+            {
+                var mdSigCell = new PdfPCell(new Phrase(" ", normalFont)); // Empty space for signature
+                mdSigCell.Border = Rectangle.BOX;
+                mdSigCell.Padding = 5f;
+                mdSigCell.MinimumHeight = 50f; // More space for signature
+                sigTable.AddCell(mdSigCell);
+            }
+
+            // Signature label row
+            var itSigLabelCell = new PdfPCell(new Phrase("Signature", normalFont));
+            itSigLabelCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            itSigLabelCell.Border = Rectangle.BOX;
+            itSigLabelCell.Padding = 5f;
+          //  itSigLabelCell.BackgroundColor = BaseColor.LIGHT_GRAY;
+            sigTable.AddCell(itSigLabelCell);
+
+            var ceoSigLabelCell = new PdfPCell(new Phrase("Signature", normalFont));
+            ceoSigLabelCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            ceoSigLabelCell.Border = Rectangle.BOX;
+            ceoSigLabelCell.Padding = 5f;
+           // ceoSigLabelCell.BackgroundColor = BaseColor.LIGHT_GRAY;
+            sigTable.AddCell(ceoSigLabelCell);
+
+            if (doc.IsMDSign && !string.IsNullOrEmpty(doc.MDName))
+            {
+                var mdSigLabelCell = new PdfPCell(new Phrase("Signature", normalFont));
+                mdSigLabelCell.HorizontalAlignment = Element.ALIGN_CENTER;
+                mdSigLabelCell.Border = Rectangle.BOX;
+                mdSigLabelCell.Padding = 5f;
+               // mdSigLabelCell.BackgroundColor = BaseColor.LIGHT_GRAY;
+                sigTable.AddCell(mdSigLabelCell);
             }
 
             document.Add(sigTable);
